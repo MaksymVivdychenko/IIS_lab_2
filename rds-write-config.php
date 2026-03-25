@@ -16,48 +16,40 @@
 
       <div class="jumbotron">
 
-      <?php
-        $ep = $_POST['endpoint'];
-      	$ep = str_replace(":3306", "", $ep);
-      	$db = $_POST['database'];
-        $un = $_POST['username'];
-        $pw = $_POST['password'];
+<?php
+  $ep = $_POST['endpoint'];
+  $ep = str_replace(":3306", "", $ep);
+  $db = $_POST['database'];
+  $un = $_POST['username'];
+  $pw = $_POST['password'];
 
-        $mysql_command = "mysql -u $un -p$pw -h $ep $db < sql/addressbook.sql";
+  $mysql_command = "mysql -u $un -p$pw -h $ep $db < sql/addressbook.sql";
 
-        $link = mysqli_connect($ep, $un, $pw, $db);
-        if(!$link) {
+  // 1. Використовуємо тільки mysqli
+  $link = mysqli_connect($ep, $un, $pw, $db);
 
-          echo "<br /><p>Unable to Establish Connection:<i>" . mysql_error() .  "</i></p>";
+  if(!$link) {
+    // 2. mysqli_connect_error() замість mysql_error()
+    echo "<br /><p>Unable to Establish Connection:<i>" . mysqli_connect_error() . "</i></p>";
+  } else {
+    // Якщо mysqli_connect успішний, ми вже підключені до бази $db
+    echo "<br /><p>Executing Command: $mysql_command</p>";
+    echo exec($mysql_command);
 
-        } else {
+    echo "<br /><p>Writing config out to rds.conf.php </p>";
 
-          $dbconnect = mysql_select_db($db);
-          if(!$dbconnect) {
+    $rds_conf_file = 'rds.conf.php';
+    $handle = fopen($rds_conf_file, 'w') or die('Cannot open file:  '.$rds_conf_file);
+    $data = "<?php \$RDS_URL='" . $ep . "'; \$RDS_DB='" . $db . "'; \$RDS_user='" . $un . "'; \$RDS_pwd='" . $pw . "'; ?>";
+    fwrite($handle, $data);
+    fclose($handle);
+    
+    // 3. Закриваємо правильну змінну правильною функцією
+    mysqli_close($link);
+  }
 
-            echo "<br /><p>Unable to Connect to DB:<i>" . mysql_error() .  "</i></p>";
-
-          } else {
-
-            echo "<br /><p>Executing Command: $mysql_command</p>";
-            echo exec($mysql_command);
-
-            echo "<br /><p>Writing config out to rds.conf.php </p>";
-
-            $rds_conf_file = 'rds.conf.php';
-            $handle = fopen($rds_conf_file, 'w') or die('Cannot open file:  '.$rds_conf_file);
-            $data = "<?php \$RDS_URL='" . $ep . "'; \$RDS_DB='" . $db . "'; \$RDS_user='" . $un . "'; \$RDS_pwd='" . $pw . "'; ?>";
-            fwrite($handle, $data);
-            fclose($handle);
-          }
-
-        }
-        mysql_close($connect);
-
-        echo "<br /><br /><p><i>Redirecting to index.php in 2 seconds (or click <a href=index.php>here</a>)</i></p>";
-
-
-      ?>
+  echo "<br /><br /><p><i>Redirecting to index.php in 2 seconds (or click <a href=index.php>here</a>)</i></p>";
+?>
 
     </div>
     </div>
